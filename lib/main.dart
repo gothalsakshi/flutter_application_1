@@ -47,41 +47,35 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   SpeechToText _speechToText = SpeechToText();
-  bool _speechEnabled = false;
+  bool speechEnabled = false;
   String _lastWords = '';
+  TextEditingController speechToTextController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _initSpeech();
+    initSpeech();
   }
 
-  /// This has to happen only once per app
-  void _initSpeech() async {
-    _speechEnabled = await _speechToText.initialize();
+  void initSpeech()async{
+    speechEnabled = await _speechToText.initialize();
     setState(() {});
   }
 
-  /// Each time to start a speech recognition session
-  void _startListening() async {
-    await _speechToText.listen(onResult: _onSpeechResult);
+  void startListening()async{
+    await _speechToText.listen(onResult: onSpeechResult);
     setState(() {});
   }
 
-  /// Manually stop the active speech recognition session
-  /// Note that there are also timeouts that each platform enforces
-  /// and the SpeechToText plugin supports setting timeouts on the
-  /// listen method.
-  void _stopListening() async {
+  void stopListening()async{
     await _speechToText.stop();
     setState(() {});
   }
 
-  /// This is the callback that the SpeechToText plugin calls when
-  /// the platform returns recognized words.
-  void _onSpeechResult(SpeechRecognitionResult result) {
+  void onSpeechResult(SpeechRecognitionResult result){
     setState(() {
       _lastWords = result.recognizedWords;
+      speechToTextController.text = result.recognizedWords;
     });
   }
 
@@ -102,6 +96,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 style: TextStyle(fontSize: 20.0),
               ),
             ),
+            TextFormField(
+              controller: speechToTextController,
+            ),
             Expanded(
               child: Container(
                 padding: EdgeInsets.all(16),
@@ -113,7 +110,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       // how to start it, otherwise indicate that speech
                       // recognition is not yet ready or not supported on
                       // the target device
-                      : _speechEnabled
+                      : speechEnabled
                           ? 'Tap the microphone to start listening...'
                           : 'Speech not available',
                 ),
@@ -125,7 +122,7 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: FloatingActionButton(
         onPressed:
             // If not yet listening for speech start, otherwise stop
-            _speechToText.isNotListening ? _startListening : _stopListening,
+            _speechToText.isNotListening ? startListening : stopListening,
         tooltip: 'Listen',
         child: Icon(_speechToText.isNotListening ? Icons.mic_off : Icons.mic),
       ),
