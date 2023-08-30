@@ -1,89 +1,98 @@
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
 
-class ImageSearchScreen extends StatefulWidget {
-  const ImageSearchScreen({super.key});
-
+class ImageSimilarityApp extends StatelessWidget {
   @override
-  State<ImageSearchScreen> createState() => _ImageSearchScreenState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text('Image Similarity'),
+        ),
+        body: Center(
+          child: ImageSimilarityWidget(),
+        ),
+      ),
+    );
+  }
 }
 
-class _ImageSearchScreenState extends State<ImageSearchScreen> {
-  List imageLinks =['https://cdn.pixabay.com/photo/2012/03/01/00/55/flowers-19830_640.jpg',
-                    'https://cdn.pixabay.com/photo/2012/03/01/00/55/flowers-19830_640.jpg',
-                    // 'https://cdn.britannica.com/84/73184-050-05ED59CB/Sunflower-field-Fargo-North-Dakota.jpg'
-                    ];
+class ImageSimilarityWidget extends StatefulWidget {
+  @override
+  _ImageSimilarityWidgetState createState() => _ImageSimilarityWidgetState();
+}
+
+class _ImageSimilarityWidgetState extends State<ImageSimilarityWidget> {
+  double similarity = 0.0;
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    calculateAccuracy();
+    calculateSimilarity();
   }
-  void calculateAccuracy() {
-    // Load your set of image links for comparison
-    // Replace this with your own image links
-    int totalPairs = 0;
-    setState(() {
-      totalPairs = imageLinks.length;
-    });
-    int correctMatches = 0;
 
-    for (int i = 0; i < totalPairs; i++) {
+  void calculateSimilarity() async {
+    try {
+      Uint8List imageBytes1 = await loadImageBytes('assets/image1.jpg');
+      Uint8List imageBytes2 = await loadImageBytes('assets/image2.jpg');
+
+      img.Image image1 = img.decodeImage(imageBytes1)!;
+      img.Image image2 = img.decodeImage(imageBytes2)!;
+
+      double mseSimilarity = calculateMSESimilarity(image1, image2);
+
       setState(() {
-        bool isMatch = compareImages(imageLinks[i]);
-        if (isMatch) {
-        correctMatches++;
-      }
+        similarity = mseSimilarity;
       });
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
 
-      // If your visual inspection matches your comparison, consider it correct
-      
+  double calculateMSESimilarity(img.Image image1, img.Image image2) {
+    double sumSquaredDifferences = 0;
+
+    for (int y = 0; y < image1.height; y++) {
+      for (int x = 0; x < image1.width; x++) {
+        int pixel1 = image1.getPixel(x, y);
+        int pixel2 = image2.getPixel(x, y);
+        int diff = (pixel1 - pixel2);
+        setState(() {
+          sumSquaredDifferences += diff * diff;
+        });
+      }
     }
 
-    
-
-    setState(() {
-      double accuracy = correctMatches / totalPairs;
-    print('Accuracy: $accuracy');
-    });
+    double mse = sumSquaredDifferences / (image1.width * image1.height);
+    double similarity = 1 - mse; // Normalize to similarity (higher value is more similar)
+    return similarity;
   }
 
-  bool compareImages(List<String> imagePair) {
-    // Load and preprocess the images
-    img.Image? image1 = img.decodeImage(imagePair[0] as Uint8List);
-    img.Image? image2 = img.decodeImage(imagePair[1] as Uint8List);
-
-    // Calculate a similarity metric (e.g., Mean Squared Error)
-    double similarity = calculateSimilarity(image1!, image2!);
-
-    // Define a threshold for similarity
-    double similarityThreshold = 100.0;
-
-    // Compare with the threshold and return true if similar
-    return similarity < similarityThreshold;
-  }
-
-  double calculateSimilarity(img.Image image1, img.Image image2) {
-    // Implement a similarity metric (e.g., Mean Squared Error)
-    double mse = img.meanSquaredError(image1, image2);
-    return mse;
+  Future<Uint8List> loadImageBytes(String imagePath) async {
+    File imageFile = File(imagePath);
+    debugPrint('checking--->${imagePath}--->${imageFile.toString()}');
+    if ( imageFile.existsSync()) {
+      return imageFile.readAsBytes();
+    } else {
+      throw Exception();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.amber,
-      body: ListView.builder(
-        itemCount: imageLinks.length,
-        itemBuilder: (ctx,index){
-        return Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Image.network(imageLinks[index]),
-        );
-      }),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Image.asset('assets/image1.jpg'),
+        Text(
+          'Similarity: ${(similarity * 100).toStringAsFixed(2)}%',
+          style: TextStyle(fontSize: 20),
+        ),
+      ],
     );
   }
 }
