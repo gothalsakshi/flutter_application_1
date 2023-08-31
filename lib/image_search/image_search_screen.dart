@@ -1,27 +1,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 
-class ImageSimilarityApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: Text('Image Similarity'),
-        ),
-        body: Center(
-          child: ImageSimilarityWidget(),
-        ),
-      ),
-    );
-  }
-}
-
 class ImageSimilarityWidget extends StatefulWidget {
+  const ImageSimilarityWidget({super.key});
+
   @override
   _ImageSimilarityWidgetState createState() => _ImageSimilarityWidgetState();
 }
@@ -36,63 +20,54 @@ class _ImageSimilarityWidgetState extends State<ImageSimilarityWidget> {
   }
 
   void calculateSimilarity() async {
-    try {
-      Uint8List imageBytes1 = await loadImageBytes('assets/image1.jpg');
-      Uint8List imageBytes2 = await loadImageBytes('assets/image2.jpg');
 
-      img.Image image1 = img.decodeImage(imageBytes1)!;
-      img.Image image2 = img.decodeImage(imageBytes2)!;
+    ByteData byteData = await rootBundle.load('assets/image2.jpg');
 
-      double mseSimilarity = calculateMSESimilarity(image1, image2);
+    Uint8List bytes = byteData.buffer.asUint8List();
 
-      setState(() {
-        similarity = mseSimilarity;
-      });
-    } catch (e) {
-      print('Error: $e');
-    }
+    ByteData byteData2 = await rootBundle.load('assets/image1.jpg');
+
+    Uint8List bytes2 = byteData2.buffer.asUint8List();
+    // Load the two images
+    img.Image? image1 = img.decodeImage(Uint8List.fromList(bytes));
+    img.Image? image2 = img.decodeImage(Uint8List.fromList(bytes2));
+
+    // Calculate the Structural Similarity Index (SSI)
+    double ssi = calculateSSI(image1!, image2!);
+
+    setState(() {
+      similarity = ssi;
+    });
   }
 
-  double calculateMSESimilarity(img.Image image1, img.Image image2) {
-    double sumSquaredDifferences = 0;
+  double calculateSSI(img.Image image1, img.Image image2) {
+    // Calculate the Structural Similarity Index (SSI)
+    // Using a simplified example, this may not be accurate for all cases
+    double sum = 0.0;
 
     for (int y = 0; y < image1.height; y++) {
       for (int x = 0; x < image1.width; x++) {
         int pixel1 = image1.getPixel(x, y);
         int pixel2 = image2.getPixel(x, y);
-        int diff = (pixel1 - pixel2);
-        setState(() {
-          sumSquaredDifferences += diff * diff;
-        });
+        sum += (pixel1 - pixel2).abs();
       }
     }
-
-    double mse = sumSquaredDifferences / (image1.width * image1.height);
-    double similarity = 1 - mse; // Normalize to similarity (higher value is more similar)
-    return similarity;
-  }
-
-  Future<Uint8List> loadImageBytes(String imagePath) async {
-    File imageFile = File(imagePath);
-    debugPrint('checking--->${imagePath}--->${imageFile.toString()}');
-    if ( imageFile.existsSync()) {
-      return imageFile.readAsBytes();
-    } else {
-      throw Exception();
-    }
+    return 1 - (sum / (image1.width * image1.height));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Scaffold(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Image.asset('assets/image1.jpg'),
         Text(
           'Similarity: ${(similarity * 100).toStringAsFixed(2)}%',
-          style: TextStyle(fontSize: 20),
+          style: const TextStyle(fontSize: 20),
         ),
       ],
+    ),
     );
   }
 }
